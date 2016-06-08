@@ -1,0 +1,126 @@
+---
+title: "impetus_pef_2qtr"
+author: "Paul Bivand"
+date: "26 January 2016"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r load_lfs, echo=FALSE}
+library(memisc)
+library(survey)
+setwd("K:/data/LFS/2-quarter")
+twoqfiles <- list.files(pattern=glob2rx("*.sav"))
+twoq.spss.system.files <- lapply(tail(twoqfiles,8), FUN=spss.system.file)
+pwts <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^lgwt",names(twoq.spss.system.files[[x]]), value=TRUE))
+ilodefr <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^ilodefr",names(twoq.spss.system.files[[x]]), value=TRUE))
+ages <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^age",names(twoq.spss.system.files[[x]]), value=TRUE))
+levquals <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^lequ",names(twoq.spss.system.files[[x]]), value=TRUE))
+levqual2 <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^levqu",names(twoq.spss.system.files[[x]]), value=TRUE))
+durun <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^durun",names(twoq.spss.system.files[[x]]), value=TRUE))
+flow <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^flow",names(twoq.spss.system.files[[x]]), value=TRUE))
+curedn <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^cure",names(twoq.spss.system.files[[x]]), value=TRUE))
+occs <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^sc10mmj2",names(twoq.spss.system.files[[x]]), value=TRUE))
+inds <- lapply(seq_along(twoq.spss.system.files), FUN=function(x) grep("^inds07m2",names(twoq.spss.system.files[[x]]), value=TRUE))
+subsetlgwt <- function(x) {test<- subset(twoq.spss.system.files[[x]], 
+                                          select=c(lgwt, 
+                                                   ages1, 
+                                                   ilodefr1,
+                                                   cured81, 
+                                                   durun1,
+                                                   flow, 
+                                                   inds07m2,
+                                                   sc10mmj2))
+measurement(test$lgwt) <-"interval" 
+test <- subset(test, ages1 %in% c(4:5))
+test$yp <- recode(test$ages1, "Yes" <- c(4:5),
+                  otherwise="No")
+test$learning <- recode(test$cured81, "In learning" <- c(1:6),
+                        "Not in classroom learning" <- c(7:13))
+test$workless <- recode(test$ilodefr1, "Workless" <- c("ILO unemployed", "Inactive"), 
+                        "In employment" <- "In employment")
+test$ypneet <- ifelse(test$learning == "Not in classroom learning" & test$workless =="Workless", "NEET", "Not NEET")
+test$towork <- recode(test$flow, 1 <- c("UE", "NE"), otherwise=0)
+#test <- subset(test, ypneet == "NEET")
+test$sectors <- recode(test$inds07m2, 
+                       "Production industries" <- c(1:5),
+                       "Construction" <- 6,
+                       "Wholesale, Retail, Hotels and restaurants" <- c(7,9),
+                       "Finance and business services" <- c(11:14),
+                       "Public, Education, Health" <- c(15:17),
+                       "Transport, Communications, Other services" <- c(8,10, 18:21))
+
+test <- as.data.frame(test[,c("flow", 
+                              "lgwt", 
+                              "workless",
+                              "ypneet",
+                              "durun1",
+                              "ages1",
+                              "inds07m2",
+                              "sc10mmj2", 
+                              "sectors")])                     
+return(test)}
+t1 <- subsetlgwt(1)
+t2 <- subsetlgwt(2)
+t3 <- subsetlgwt(3)
+t4 <- subsetlgwt(4)
+t5 <- subsetlgwt(5)
+t6 <- subsetlgwt(6)
+t7 <- subsetlgwt(7)
+t8 <- subsetlgwt(8)
+### repeat for t10 through to t16
+
+testall2q <- rbind.data.frame(t1, t2, t3, t4, t5, t6, t7, t8)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+library(survey)
+library(srvyr)
+library(formattable)
+svytestall2q <- as_survey_design(testall2q, weights=lgwt)
+svytestall2q2 <- group_by(svytestall2q, sc10mmj2, sectors, add=TRUE )
+svytestall2q2b <- group_by(svytestall2q, ypneet, sc10mmj2, sectors, add=TRUE )
+
+matrixoutput <- summarise(svytestall2q2,numbers=survey_total(na.rm=TRUE, vartype = "ci")) 
+matrixoutput2 <- summarise(svytestall2q2b,numbers=survey_total(na.rm=TRUE, vartype = "ci")) 
+
+svytestall3 <- group_by(svytestall2q, ypneet,sc10mmj2,  add=TRUE) %>% summarise(pct =survey_mean(na.rm=TRUE, vartype = "ci"))
+svytestal2q4 <- svytestall2q %>% group_by(workless, sc10mmj2, sectors) %>% summarise(pct=survey_total(na.rm=TRUE, vartype = "ci"))
+
+# Sectors
+capture.output(svyciprop(~I(inds07m2 == "C  Manufacturing"), svytestall), file="matrixoutput.txt")
+capture.output(svyciprop(~I(inds07m2 == "F  Construction"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "G  Wholesale, retail, repair of vehicles"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "H  Transport and storage"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "I  Accommodation and food services"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "J  Information and communication"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "K  Financial and insurance activities"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "M  Prof, scientific, technical activ."), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "N  Admin and support services"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "P  Education"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "Q  Health and social work"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "R  Arts, entertainment and recreation"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(inds07m2 == "S  Other service activities"), svytestall), file="matrixoutput.txt", append=TRUE)
+
+# Occupations
+capture.output(svyciprop(~I(sc10mmj2 == "1  'Managers, Directors And Senior Officials'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "1  'Managers, Directors And Senior Officials'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "2  'Professional Occupations'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "3  'Associate Professional And Technical Occupations'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "4  'Administrative And Secretarial Occupations'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "5  'Skilled Trades Occupations'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "6  'Caring, Leisure And Other Service Occupations'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "7  'Sales And Customer Service Occupations'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "8  'Process, Plant And Machine Operatives'"), svytestall), file="matrixoutput.txt", append=TRUE)
+capture.output(svyciprop(~I(sc10mmj2 == "9  'Elementary Occupations'"), svytestall),file="matrixoutput.txt", append=TRUE)
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

@@ -1,0 +1,180 @@
+---
+title: "Underemployment"
+author: "Paul Bivand"
+date: "9 February 2016"
+output: html_document
+---
+
+#Percentage of employed young people who are ‘underemployed’
+
+-	Inclusion to reboot previous work carried out for LGA on this indicator - looking for young people not working as much as they'd like. 
+
+-	‘Underemployed’ young people, which is defined as those who are working but want to work longer hours.
+
+-	Young people classified as on ‘government employment and training schemes’. These people are counted as ‘in employment’ in the national statistics, but are most likely to be doing small amounts of work experience, work preparation, or training for work as arranged by organisations like Jobcentre Plus and Work Programme providers.
+
+-	Young people who are working in temporary jobs but want full-time work.
+
+-	Young people who are ‘over-qualified’ for the work that they are doing.
+
+
+
+```{r load_lfs, echo=FALSE}
+library(memisc)
+library(survey)
+setwd("K:/data/LFS/Quarterly_Q1name")
+qtrlyfiles <- list.files(pattern=glob2rx("*.sav"))
+qtrly.spss.system.files <- lapply(tail(qtrlyfiles,4), FUN=spss.system.file)
+pwts <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^pwt",names(qtrly.spss.system.files[[x]]), value=TRUE))
+inec <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^ineca",names(qtrly.spss.system.files[[x]]), value=TRUE))
+ages <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^age",names(qtrly.spss.system.files[[x]]), value=TRUE))
+levquals <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^lequ",names(qtrly.spss.system.files[[x]]), value=TRUE))
+levqual2 <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^levqu",names(qtrly.spss.system.files[[x]]), value=TRUE))
+curedn <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^cure",names(qtrly.spss.system.files[[x]]), value=TRUE))
+undemp <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^undemp",names(qtrly.spss.system.files[[x]]), value=TRUE))
+undhrs <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^undh",names(qtrly.spss.system.files[[x]]), value=TRUE))
+whytmp <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^whytmp",names(qtrly.spss.system.files[[x]]), value=TRUE))
+restm <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^restm",names(qtrly.spss.system.files[[x]]), value=TRUE))
+hiqual <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^hiqul",names(qtrly.spss.system.files[[x]]), value=TRUE))
+disea <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^disea",names(qtrly.spss.system.files[[x]]), value=TRUE))
+govtof <- lapply(seq_along(qtrly.spss.system.files), FUN=function(x) grep("^govtof",names(qtrly.spss.system.files[[x]]), value=TRUE))
+
+subsetlgwt1 <- function(x) {test<- subset(qtrly.spss.system.files[[x]], 
+                                          select=c(pwt14, 
+                                                   ages, 
+                                                   inecac05,
+                                                   disea,
+                                                   govtof2,
+                                                   hiqul11d,
+                                                   levqul11,
+                                                   undemp,
+                                                   undhrs,
+                                                   whytmp6,
+                                                   restmr6, 
+                                                   sc10mmj, cured8))
+measurement(test$pwt14) <-"interval" 
+test <- subset(test, ages %in% c(4:5))
+test$yp <- recode(test$ages, "Yes" <- c(4:5),
+                  otherwise="No")
+test$learning <- recode(test$cured8, "In learning" <- c(1:6),
+                        "Not in classroom learning" <- c(7:13))
+test$workless <- recode(test$inecac05, "Workless" <- c(5:33), 
+                        "In employment" <- c(1:4))
+#test$ypneet <- cases("NEET" = test$yp == "Yes" & (test$learning == "Not in classroom learning" & test$workless =="Workless"),"Not NEET" = test$yp == "Yes" & (test$learning != "Not in classroom learning" | test$workless !="Workless"))
+test$scheme <- recode(test$inecac05, "Govt scheme" <- 3,
+                      otherwise="No")
+test$wanthrs <- recode(test$undemp, "Yes" <- 1,
+                       "No" <- 2:4)
+test$wantperm <- recode(test$whytmp6, "Yes" <- 3,
+                       "No" <- c(1:2,4:6))
+
+
+test <- as.data.frame(test[,c("pwt14",
+                              "ages",
+                              "disea",
+                              "govtof2",
+                              "hiqul11d",
+                              "levqul11",
+                              "sc10mmj",
+                              "learning",
+                              "workless",
+                              "scheme",
+                              "wanthrs",
+                              "wantperm")])  
+test$NEET <- as.factor(ifelse(test$learning == "Not in classroom learning" & test$workless == "Workless", "NEET", "Not NEET"))
+
+#ONS count grads in associate professional as overqualified. Bis don't. Follow BIS.
+test$gng <- as.factor(ifelse(test$hiqul11d == "Degree or equivalent" & (test$sc10mmj %in% c("4  'Administrative And Secretarial Occupations'", "5  'Skilled Trades Occupations'", "6  'Caring, Leisure And Other Service Occupations'", "7  'Sales And Customer Service Occupations'", "8  'Process, Plant And Machine Operatives'", "9  'Elementary Occupations'")), "Underemployed grad", "Not underemployed grad"))
+test$upmid <- as.factor(ifelse(test$hiqul11d %in% c("Higher education", "GCE, A-level or equivalent") & (test$sc10mmj %in% c("4  'Administrative And Secretarial Occupations'", "6  'Caring, Leisure And Other Service Occupations'", "7  'Sales And Customer Service Occupations'", "8  'Process, Plant And Machine Operatives'", "9  'Elementary Occupations'")), "Underemployed upmid", "Not underemployed upmid"))
+test$lowmid <- as.factor(ifelse(test$hiqul11d %in% c("GCSE grades A*-C or equivalent", "Other qualifications") & (test$sc10mmj == "9  'Elementary Occupations'"), "Underemployed lowmid", "Not underemployed lowmid"))
+test$overqual <- as.factor(ifelse(test$gng == "Underemployed grad" | test$upmid == "Underemployed upmid" | test$lowmid == "Underemployed lowmid", "Overqual", "Not overqual"))
+test$scheme <- as.factor(ifelse(is.na(test$scheme), "Not in group", "Govt scheme"))
+test$wanthrs <- as.factor(ifelse(is.na(test$wanthrs), "No", ifelse(test$wanthrs == "No", "No", "Yes")))
+test$wantperm <- as.factor(ifelse(is.na(test$wantperm), "No", ifelse(test$wantperm == "No", "No", "Yes")))
+test$overqual <- as.factor(ifelse(is.na(test$overqual), "Not overqual", ifelse(test$overqual == "Not overqual", "Not overqual", "Overqual")))
+
+test$underemployed <- as.factor(ifelse(test$scheme == "Govt scheme", "Govt scheme", 
+                                       ifelse(test$wanthrs == "Yes", "Want hours", ifelse(test$wantperm == "Yes", "Want Perm job", ifelse(test$overqual == "Overqual", "Overqual", "Other")))))
+return(test)}
+
+
+subsetlgwt2 <- function(x) {test<- subset(qtrly.spss.system.files[[x]], 
+                                          select=c(pwt14, 
+                                                   ages, 
+                                                   inecac05,
+                                                   disea,
+                                                   govtof2,
+                                                   hiqul11d = hiqul15d,
+                                                   levqul11 = levqul15,
+                                                   undemp,
+                                                   undhrs,
+                                                   whytmp6,
+                                                   restmr6, 
+                                                   sc10mmj,
+                                                   cured8))
+measurement(test$pwt14) <-"interval" 
+test <- subset(test, ages %in% c(4:5))
+test$yp <- recode(test$ages, "Yes" <- c(4:5),
+                  otherwise="No")
+test$learning <- recode(test$cured8, "In learning" <- c(1:6),
+                        "Not in classroom learning" <- c(7:13))
+test$workless <- recode(test$inecac05, "Workless" <- c(5:33), 
+                        "In employment" <- c(1:4))
+#test$ypneet <- cases("NEET" = test$yp == "Yes" & (test$learning == "Not in classroom learning" & test$workless =="Workless"),"Not NEET" = test$yp == "Yes" & (test$learning != "Not in classroom learning" | test$workless !="Workless"))
+test$scheme <- recode(test$inecac05, "Govt scheme" <- 3,
+                      otherwise="No")
+test$wanthrs <- recode(test$undemp, "Yes" <- 1,
+                       "No" <- 2:4)
+test$wantperm <- recode(test$whytmp6, "Yes" <- 3,
+                       "No" <- c(1:2,4:6))
+
+
+test <- as.data.frame(test[,c("pwt14",
+                              "ages",
+                              "disea",
+                              "govtof2",
+                              "hiqul11d",
+                              "levqul11",
+                              "sc10mmj",
+                              "learning",
+                              "workless",
+                              "scheme",
+                              "wanthrs",
+                              "wantperm")])    
+test$NEET <- as.factor(ifelse(test$learning == "Not in classroom learning" & test$workless == "Workless", "NEET", "Not NEET"))
+
+#ONS count grads in associate professional as overqualified. Bis don't. Follow BIS.
+test$gng <- as.factor(ifelse(test$hiqul11d == "Degree or equivalent" & (test$sc10mmj %in% c("4  'Administrative And Secretarial Occupations'", "5  'Skilled Trades Occupations'", "6  'Caring, Leisure And Other Service Occupations'", "7  'Sales And Customer Service Occupations'", "8  'Process, Plant And Machine Operatives'", "9  'Elementary Occupations'")), "Underemployed grad", "Not underemployed grad"))
+test$upmid <- as.factor(ifelse(test$hiqul11d %in% c("Higher education", "GCE, A-level or equivalent", "GCE A level or equivalent") & (test$sc10mmj %in% c("4  'Administrative And Secretarial Occupations'", "6  'Caring, Leisure And Other Service Occupations'", "7  'Sales And Customer Service Occupations'", "8  'Process, Plant And Machine Operatives'", "9  'Elementary Occupations'")), "Underemployed upmid", "Not underemployed upmid"))
+test$lowmid <- as.factor(ifelse(test$hiqul11d %in% c("GCSE grades A*-C or equivalent", "Other qualifications") & (test$sc10mmj == "9  'Elementary Occupations'"), "Underemployed lowmid", "Not underemployed lowmid"))
+test$overqual <- as.factor(ifelse(test$gng == "Underemployed grad" | test$upmid == "Underemployed upmid" | test$lowmid == "Underemployed lowmid", "Overqual", "Not overqual"))
+test$scheme <- as.factor(ifelse(is.na(test$scheme), "Not in group", "Govt scheme"))
+test$wanthrs <- as.factor(ifelse(is.na(test$wanthrs), "No", ifelse(test$wanthrs == "No", "No", "Yes")))
+test$wantperm <- as.factor(ifelse(is.na(test$wantperm), "No", ifelse(test$wantperm == "No", "No", "Yes")))
+test$overqual <- as.factor(ifelse(is.na(test$overqual), "Not overqual", ifelse(test$overqual == "Not overqual", "Not overqual", "Overqual")))
+
+test$underemployed <- as.factor(ifelse(test$scheme == "Govt scheme", "Govt scheme", 
+                                       ifelse(test$wanthrs == "Yes", "Want hours", ifelse(test$wantperm == "Yes", "Want Perm job", ifelse(test$overqual == "Overqual", "Overqual", "Other")))))
+
+return(test)}
+t1 <- subsetlgwt2(1)
+t2 <- subsetlgwt2(2)
+t3 <- subsetlgwt2(3)
+t4 <- subsetlgwt2(4)
+t_all <- rbind(t1, t2, t3, t4)
+### repeat for t10 through to t16
+```
+
+##Outputs
+
+Underemployment is defined hierarchically - if young people are in a Government employment and training programme, they are assigned to that category. Then, if they are not in that category and are working and want longer hours, they are asigned to that category. Then, if they are not already classified as underemployed and are working in a temp job because they could not get a permanent job, they are assigned to "Want Perm job". The final grouping is those who are overqualified for the job they are doing. Young people are not classified into this group if they have been in any of the previous classifications. 
+
+The methods used for defining overqualification are a combination of ONS methods used in their publications on the graduate labour market, and those used by BIS for their similar publication. The ONS publication defines qualifications and occupations as graduate, upper middle (A Level or equivalent), Lower middle (GCSE A-C or equivalent), with the remainder below that. ONS restricts graduate occupations to managerial and professional occupations, while the BIS equivalent includes also associate professional jobs. We have followed BIS in this classification. The appropriate occupations for other classification levels follow the ONS method, with the upper middle grouping including skilled trades as well as those appropriate for graduate. Everybody working in elementary occupations who has a qualification at GCSE A-C or above is classified as overqualified.
+
+```{r outputs_creation, echo=FALSE}
+library(srvyr)
+library(formattable)
+svyt_all <- t_all %>% as_survey_design(weights=pwt14) %>% group_by(underemployed)
+underemp_nos <- svyt_all %>% summarise(pct = survey_total(vartype="ci"))
+underemp_pct <- svyt_all %>% summarise(pct = survey_mean(vartype="ci"))
+```

@@ -1,0 +1,85 @@
+---
+title: "Indicator list"
+author: "Paul Bivand"
+date: "9 February 2016"
+output: html_document
+---
+
+#Notes on Indicators 
+
+##Percentage of young people in economic disadvantage achieving five GCSE A*-C in English and Maths
+
+-	Need to understand if there is capacity to link up FSM-no GCSEs-NEET status: one figure which links disadvantage with higher NEET likelihood. Inclusion to consider.
+-	Inclusion response. For now, it is probably best to use the DfE index outlined at https://www.gov.uk/government/statistics/measuring-disadvantaged-pupils-attainment-gaps-over-time#history
+-	This is based on very complex data analysis of National Pupil dataset data. New figures for the Age 16 (KS4) group due 21st January 2015 as part of the GCSE results Statistical First Release
+
+##The rate at which young people who fail to achieve this qualification at 16 do achieve it by 19, differentiated by economic background
+
+- 	This data set is more useful if destinations pf young people failing/not failing to get L2 qualifications by 19 can be seen. There is an experimental data set on destinations from FE which LV mentioned
+-	Inclusion to get hold of this. If not useful then the headline figure (regularly released by DfE) can be used.
+- Inclusion response. The best dataset to report this is https://www.gov.uk/government/statistics/level-2-and-3-attainment-by-young-people-aged-19-in-2014 Table 8 seems to be the best fit.
+
+##Percentage of young people 16-18 gaining an FE qualification or A-Level
+
+-	There is potential to re-frame this indicator and look at the quality/duration/intensity of courses young people are going to and incorporating part-time students and the difference in tracking between DfE and LFS. Inclusion to consider. 
+-	There are other parts of the same release covered in the second point that cover which sorts of qualification those who progressed did so. E.g. Tables 14 and 15
+
+These are based on DfE/BIS linked data showing whether pupils at aged 16 gained a qualification by age 19 in either school, college apprenticeship etc. They do not indicate whether the pupils spent any time NEET – just whether or not they had progressed to Level 2 (or 3) by 19. For us to replicate this analysis would not be a good use of time (or anything else). The further linked data to HMRC (for jobs) and HESA (for higher education entrance) is becoming available within Government but is not yet, and the question of whether it will be available outside government is not yet decided.
+
+##Percentage of young people spending up to six months NEET at some point 18-24
+
+DfE statistics only cover point in time NEET, rather than sustained or not NEET. Therefore, to do this we would use Labour Force Survey 5-quarter longitudinal datasets. This is the same breakdown as the next one, with two breaks, NEET in single quarter out of 5 and NEET in 2 or more quarters out of 5. We will check the ‘length out of work’ variables to further exclude those who had a job but not at interview time.
+
+The extent to which we can cut both by demographics and geography depends on sample numbers. The most interesting analysis may be similar to the DfE’s breakdown – unemployed, long-term unemployed, inactive/long term sick, inactive/looking after family/inactive other. 
+
+##Percentage of young people spending more than six months NEET at some point 18-24
+
+-	Inclusion to cut this data by demographics and geography
+
+LFS – do a run to gauge sample numbers.
+
+##Percentage of employed young people who are ‘underemployed’
+
+-	Inclusion to reboot previous work carried out for LGA on this indicator - looking for young people not working as much as they'd like. 
+
+The original ‘Total Hidden Talent’ measure included:
+-	Economically inactive young people who want a job but aren’t currently looking, including discouraged workers. 
+
+-	‘Underemployed’ young people, which is defined as either those who are working but want to work longer hours.
+
+-	Young people classified as on ‘government employment and training schemes’. These people are counted as ‘in employment’ in the national statistics, but are most likely to be doing small amounts of work experience, work preparation, or training for work as arranged by organisations like Jobcentre Plus and Work Programme providers.
+
+-	Young people who are working in temporary jobs but want full-time work.
+
+-	Young people who are ‘over-qualified’ for the work that they are doing.
+
+-	As well as the unemployed and inactive don’t want a job
+
+Which of these you want included is for you.
+
+##An indicator assessing which sector young people are going into
+
+- 	Inclusion to consider breaking down sustainment by sector - this will dilute the sample base, so they might need to run stats for more than four quarters. Inclusion to consider whether this is feasible
+-	If not, Inclusion to do a point in time analysis of sectors YP are going into
+
+LFS – do a run to gauge sample numbers. We believe it is more sensible to look at occupations as most in this group enter elementary level occupations which occur in all sectors.
+
+As per Marina’s analysis, this is not all young people, but young people who have experienced ‘NEETness’. People are likely to move sector within the elementary jobs level. Job churn is expected here.
+
+##How well sustained are young people’s exit from NEET status
+
+
+- 	Inclusion to analyse the transition to EET in terms of sustainment for different groups. Stats will need to be run over 4 quarters. Priority groups are
+
+•	Living in deprived area
+•	Eligible for FSM
+•	<5 GCSEs
+•	Care leavers
+•	Multi-gen unemployment
+•	Pregnancy 
+•	Mental/Physical illness or Disability
+
+LFS – do a run to gauge sample numbers. As per Marina’s analysis. However, sample numbers/confidence intervals are crucial. The only LFS breakdowns will be qualification and disability. Others (parental worklessness) may be coming on stream but not there yet. 
+
+The DfE/BIS/HESA/HMRC/DWP datasets that are in development would be able to provide much more detail as they are based on 100% admin data (with collection/recording issues) rather than a survey. However, they aren’t there yet.
+

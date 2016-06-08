@@ -1,0 +1,269 @@
+---
+title: "impetus_pef_5qtr"
+author: "Paul Bivand"
+date: "26 January 2016"
+output: html_document
+---
+
+#INDICATOR 4: PERCENTAGE OF YOUNG PEOPLE SPENDING UP TO SIX MONTHS NOT IN EDUCATION, EMPLOYMENT OR TRAINING (NEET)
+
+This indicator is intended to go a little deeper than the headline figure of NEET numbers. Some young people may be more likely to be long-term NEET than others, and conversely some may be likely to be only short-term NEET. This poses issues for the metrics that are used to identify success. We need to be alert to issues of ‘creaming’ – assisting those most likely to move off NEET and ‘parking’ – providing lesser assistance to those least likely to move off NEET.
+
+
+```{r load_lfs, echo=FALSE}
+library(memisc)
+library(survey)
+
+#This is actually a 5-quarter analysis
+lfsdirectory <- "K:/data/LFS/5-quarter"
+setwd(lfsdirectory)
+fiveqfiles <- list.files(pattern=glob2rx("*.sav"))
+fiveq.spss.system.files <- lapply(tail(fiveqfiles,8), FUN=spss.system.file)
+pwts <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^lgwt",names(fiveq.spss.system.files[[x]]), value=TRUE))
+ilodefr <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^ilodefr",names(fiveq.spss.system.files[[x]]), value=TRUE))
+ages <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^age",names(fiveq.spss.system.files[[x]]), value=TRUE))
+levquals <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^lequ",names(fiveq.spss.system.files[[x]]), value=TRUE))
+levqual2 <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^levqu",names(fiveq.spss.system.files[[x]]), value=TRUE))
+durun <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^durun",names(fiveq.spss.system.files[[x]]), value=TRUE))
+flow <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^flow",names(fiveq.spss.system.files[[x]]), value=TRUE))
+curedn <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^cure",names(fiveq.spss.system.files[[x]]), value=TRUE))
+disea <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^dise",names(fiveq.spss.system.files[[x]]), value=TRUE))
+
+setwd("F:/R&C/Projects - Current/1787 - Impetus - Youth dashboard/lfs stuff")
+
+subsetlgwt <- function(x) {test<- subset(fiveq.spss.system.files[[x]], 
+                                          select=c(lgwt, 
+                                                   ages1, 
+                                                   sex,
+                                                   ilodefr1,
+                                                   ilodefr2, 
+                                                   ilodefr3, 
+                                                   ilodefr4,
+                                                   ilodefr5,
+                                                   cured81, 
+                                                   cured82,
+                                                   cured83,
+                                                   cured84,
+                                                   cured85,
+                                                   durun1,
+                                                   flow, 
+                                                   lequl111,
+                                                   #disea1,
+                                                   anflow,
+                                                   ethew181,
+                                                   govtor1))
+measurement(test$lgwt) <-"interval" 
+test <- subset(test, ages1 %in% c(4:5))
+test$yp <- recode(test$ages1, "Yes" <- c(4:5),
+                  otherwise="No")
+test$learning1 <- recode(test$cured81, "In learning" <- c(1:6), otherwise = "Not in classroom learning")
+test$learning2 <- recode(test$cured82, "In learning" <- c(1:6), otherwise = "Not in classroom learning")
+test$learning3 <- recode(test$cured83, "In learning" <- c(1:6), otherwise = "Not in classroom learning" )
+test$learning4 <- recode(test$cured84, "In learning" <- c(1:6), otherwise = "Not in classroom learning" )
+test$learning5 <- recode(test$cured85, "In learning" <- c(1:6), otherwise = "Not in classroom learning")
+
+test$workless1 <- recode(test$ilodefr1, "Workless" <- c(2:3), 
+                        "In employment" <- 1)
+test$workless2 <- recode(test$ilodefr2, "Workless" <- c(2:3), 
+                        "In employment" <- 1)
+test$workless3 <- recode(test$ilodefr3, "Workless" <- c(2:3), 
+                        "In employment" <- 1)
+test$workless4 <- recode(test$ilodefr4, "Workless" <- c(2:3), 
+                        "In employment" <- 1)
+test$workless5 <- recode(test$ilodefr5, "Workless" <- c(2:3), 
+                        "In employment" <- 1)
+test$ypneet1 <- cases("NEET" = test$yp == "Yes" & (is.na(test$learning1) & test$workless1 =="Workless"),
+                     "Not NEET" = test$yp == "Yes" & (!is.na(test$learning1)  | test$workless1 !="Workless"))
+test$ypneet2 <- cases("NEET" = test$yp == "Yes" & (is.na(test$learning2) & test$workless2 =="Workless"),
+                     "Not NEET" = test$yp == "Yes" & (!is.na(test$learning2) | test$workless2 !="Workless"))
+test$ypneet3 <- cases("NEET" = test$yp == "Yes" & (is.na(test$learning3) & test$workless3 =="Workless"),
+                     "Not NEET" = test$yp == "Yes" & (!is.na(test$learning3)| test$workless3 !="Workless"))
+test$ypneet4 <- cases("NEET" = test$yp == "Yes" & (is.na(test$learning4) & test$workless4 =="Workless"),
+                     "Not NEET" = test$yp == "Yes" & (!is.na(test$learning4) | test$workless4 !="Workless"))
+test$ypneet5 <- cases("NEET" = test$yp == "Yes" & (is.na(test$learning5) & test$workless5 =="Workless"),
+                     "Not NEET" = test$yp == "Yes" & (!is.na(test$learning5) | test$workless5 !="Workless"))
+
+test$neet2q12 <- as.factor(ifelse(test$ypneet1 == "NEET" & test$ypneet2 == "NEET", "NEET6months", "Not NEET6months"))
+test$neet2q23 <- as.factor(ifelse(test$ypneet2 == "NEET" & test$ypneet3 == "NEET", "NEET6months", "Not NEET6months"))
+test$neet2q34 <- as.factor(ifelse(test$ypneet3 == "NEET" & test$ypneet4 == "NEET", "NEET6months", "Not NEET6months"))
+test$neet2q45 <- as.factor(ifelse(test$ypneet4 == "NEET" & test$ypneet5 == "NEET", "NEET6months", "Not NEET6months"))
+test$neet2 <- as.factor(ifelse(test$neet2q12=="NEET6months" | test$neet2q23 == "NEET6months"| test$neet2q34 == "NEET6months" | test$neet2q45 == "NEET6months", "NEET6months", "NotNEET6months"))    
+ 
+test$neet3q13 <- as.factor(ifelse(test$ypneet1 == "NEET" & test$ypneet2 == "NEET"& test$ypneet3 == "NEET", "NEET9months", "Not NEET9months"))
+test$neet3q24 <- as.factor(ifelse(test$ypneet2 == "NEET" & test$ypneet3 == "NEET"& test$ypneet4 == "NEET", "NEET9months", "Not NEET9months"))
+test$neet3q35 <- as.factor(ifelse(test$ypneet3 == "NEET" & test$ypneet4 == "NEET"& test$ypneet5 == "NEET", "NEET9months", "Not NEET9months"))
+test$neet3 <- as.factor(ifelse(test$neet3q13=="NEET9months" | test$neet3q24 == "NEET9months"| test$neet3q35 == "NEET9months" , "NEET9months", "NotNEET9months"))    
+
+
+#test$towork <- recode(test$flow, 1 <- c("UE", "NE"), otherwise=0)
+
+test <- as.data.frame(test[,c("lgwt", 
+                              "durun1",
+                              "ages1",
+                              "ypneet1",
+                              "ypneet2",
+                              "ypneet3",
+                              "ypneet4",
+                              "ypneet5",
+                              "lequl111", 
+                              #"disea1", 
+                              "flow",
+                              "anflow",
+                              "ethew181",
+                              "neet2",
+                              "neet3",
+                              "govtor1",
+                              "sex")])                     
+return(test)}
+t8 <- subsetlgwt(8)
+t7 <- subsetlgwt(7)
+t6 <- subsetlgwt(6)
+t5 <- subsetlgwt(5)
+t4 <- subsetlgwt(4)
+t3 <- subsetlgwt(3)
+t2 <- subsetlgwt(2)
+t1 <- subsetlgwt(1)
+
+### repeat for t10 through to t16
+
+testall <- rbind.data.frame(t1, t2, t3, t4, t5, t6, t7, t8)
+
+
+testall$neetany <- as.factor(ifelse(testall$ypneet1 == "NEET" | testall$ypneet2 == "NEET" | testall$ypneet3 == "NEET" |testall$ypneet4 == "NEET"| testall$ypneet5 == "NEET", "NEET any" , "Not at all NEET"))
+testall$shortneet <- as.factor(ifelse(testall$neetany == "NEET any" & testall$neet2 == "NotNEET6months", "Short term NEET", ifelse(testall$neet2 == "NEET6months", "NEET6monthsormore", "NotatallNEET")))
+
+testall$NEET1NotNEET4 <- as.factor(ifelse(testall$ypneet1 == "NEET" & testall$ypneet2 == "Not NEET" & testall$ypneet3 == "Not NEET" & testall$ypneet4 == "Not NEET" & testall$ypneet5 == "Not NEET", "NEET1Not4", "Other") )
+testall$NEET1NotNEET3 <- as.factor(ifelse(testall$ypneet1 == "NEET" & testall$ypneet2 == "Not NEET" & testall$ypneet3 == "Not NEET" & testall$ypneet4 == "Not NEET", "NEET1Not3", "Other") )
+testall$NEET1NotNEET2 <- as.factor(ifelse(testall$ypneet1 == "NEET" & testall$ypneet2 == "Not NEET" & testall$ypneet3 == "Not NEET" , "NEET1Not2", "Other") )
+testall$NEET1NotNEET1 <- as.factor(ifelse(testall$ypneet1 == "NEET" & testall$ypneet2 == "Not NEET", "NEET1Not1", "Other") )
+
+testall$NEET2NotNEET3 <- as.factor(ifelse(testall$ypneet2 == "NEET" & testall$ypneet3 == "Not NEET" & testall$ypneet4 == "Not NEET" & testall$ypneet5== "Not NEET", "NEET2Not3", "Other") )
+testall$NEET2NotNEET2 <- as.factor(ifelse(testall$ypneet2 == "NEET" & testall$ypneet3 == "Not NEET" & testall$ypneet4 == "Not NEET" , "NEET2Not2", "Other") )
+testall$NEET2NotNEET1 <- as.factor(ifelse(testall$ypneet2 == "NEET" & testall$ypneet3 == "Not NEET", "NEET2Not1", "Other") )
+
+testall$NEET3NotNEET2 <- as.factor(ifelse(testall$ypneet3 == "NEET" & testall$ypneet4 == "Not NEET" & testall$ypneet5 == "Not NEET" , "NEET3Not2", "Other") )
+testall$NEET3NotNEET1 <- as.factor(ifelse(testall$ypneet3 == "NEET" & testall$ypneet4 == "Not NEET", "NEET3Not1", "Other") )
+
+testall$NEET4NotNEET1 <- as.factor(ifelse(testall$ypneet4 == "NEET" & testall$ypneet5 == "Not NEET", "NEET4Not1", "Other") )
+
+testall$NEET1exit <- as.factor(ifelse(testall$NEET1NotNEET4 == "NEET1Not4", "Sustained 4", ifelse(testall$NEET1NotNEET3 == "NEET1Not3", "Sustained 3", ifelse(testall$NEET1NotNEET2== "NEET1Not2", "Sustained 2", ifelse(testall$NEET1NotNEET1 == "NEET1Not1" , "Only 1",ifelse(testall$ypneet1== "NEET", "NEET all 5", "Not NEET Wave 1"))))))
+
+testall$NEET2exit <- as.factor(ifelse(testall$NEET2NotNEET3 == "NEET2Not3", "Sustained 3", ifelse(testall$NEET2NotNEET2 == "NEET2Not2", "Sustained 2", ifelse(testall$NEET2NotNEET1== "NEET2Not1", "Only 1", ifelse(testall$ypneet2== "NEET", "NEET all 4", "Not NEET Wave 2")))))
+
+testall$neet1_12mo <- as.factor(ifelse(testall$ypneet1 == "NEET" & testall$ypneet2 == "NEET" & testall$ypneet3 == "NEET" & testall$ypneet4 == "NEET", "NEET12mo", "NotNEET12mo"))
+testall$neet2_12mo <- as.factor(ifelse(testall$ypneet2 == "NEET" & testall$ypneet3 == "NEET" & testall$ypneet4 == "NEET" & testall$ypneet5 == "NEET", "NEET12mo", "NotNEET12mo"))
+
+testall$neet12mo <- as.factor(ifelse(testall$neet1_12mo == "NEET12mo"| testall$neet2_12mo == "NEET12mo", "NEET12mo", "NotNEET12mo"))
+
+testall$neet1_15mo <- as.factor(ifelse(testall$ypneet1 == "NEET" & testall$ypneet2 == "NEET" & testall$ypneet3 == "NEET" & testall$ypneet4 == "NEET" & testall$ypneet5 == "NEET", "NEET15mo", "NotNEET15mo"))
+
+
+
+```
+
+
+
+```{r, echo=FALSE}
+library(survey)
+library(srvyr)
+library(formattable)
+svytestall <- as_survey_design(testall, weights=lgwt)
+svytestall2 <- group_by(svytestall, neet2)
+svytestall3 <- svytestall %>% group_by(lequl111, neet12mo)
+svytestall4 <- svytestall %>% group_by(ypneet1, NEET1NotNEET4, lequl111)
+#capture.output(svyciprop(~I(inds07m2 == "C  Manufacturing"), svytestall),"output.txt")
+
+svytestall5 <- svytestall %>% group_by(lequl111, neet2)
+svytestall6 <- svytestall %>% group_by(lequl111, shortneet)
+svytestall7 <- svytestall %>% group_by(ypneet1, NEET1NotNEET1, lequl111)
+
+
+neetall5numbers <- svytestall3 %>% summarise(numbers = survey_total(vartype="ci"))
+neetall5pct <- svytestall3 %>% summarise(pct = survey_mean(vartype="ci"))
+neet1not4numbers <- svytestall4 %>% summarise(numbers = survey_total(vartype="ci", na.rm=TRUE))
+neet1not1numbers <- svytestall7 %>% summarise(numbers = survey_total(vartype="ci", na.rm=TRUE))
+
+
+shortneetnumbers <- svytestall6 %>% summarise(numbers = survey_total(vartype="ci"))
+shortneetpct <- svytestall6 %>% summarise(pct = survey_mean(vartype="ci"))
+
+#svytestall7 <- svytestall %>% filter(NEET1NotNEET2 == "NEET1Not2") %>% group_by(NEET1exit)
+#sustainpct <- svytestall7 %>% summarise(pct = survey_mean(vartype="ci"))
+
+```
+
+Figure 4 shows that 11% of the youth population spend under six months NEET, while 13% spend 12 months or more NEET.
+
+The calculation identifies those who were short term NEET at any time in the period they were interviewed for the Labour Force Survey.
+
+Figure 5 breaks this down by qualification, showing the proportion of all young people with that qualification level who were not at all NEET (in the 15 months covered by LFS interviews), those who were under six months NEET and those who were over six months NEET.
+
+Even for those with no qualifications, 57% did not spend any time NEET. A similar, slightly, but not significantly, higher proportion, 58% of young people with qualifications below Level 2, were not observed as NEET.
+
+Figure 6 breaks out the NEET proportions and shows the gaps between higher and lower qualification groups more clearly.
+
+This shows that the proportions of young people in each qualification group who are short-term NEET do differ, with the higher qualified having higher proportions NEET. The big gaps, however, are in those longer term NEET.
+
+While all long-term NEET started as short-term NEET, it is clear that the risks of becoming long-term NEET are much higher for those qualified below NQF Level 2 than for the higher qualified.
+
+#INDICATOR 5: THE PROPORTION OF YOUNG PEOPLE THAT ARE LONG-TERM NEET
+
+This Indicator measures the proportion of young people that have been outside education, employment or training for at least six months.  There is strong evidence that spending a long time unemployed or inactive, particularly at a young age, can lead to long-term negative impacts on earnings, employment, health or wellbeing (so-called ‘scarring’).  
+
+##NEET SIX MONTHS OR MORE
+
+Our measure is again based on the Labour Force Survey.  We have defined as being NEET for six months or more those young people who are classed as being NEET in any two consecutive quarters out of the five quarters for which they are observed in the 5-quarter survey.
+
+We estimate that, in the 8 consistent datasets used (finishing in the 4th quarter of 2015), there were 1.29 million young people NEET for six months or more. The confidence interval is between 1.17 million and 1.41 million.
+
+The risk of being NEET for six months or more varies strongly with qualification. The risk (that is, the percentage of young people with that qualification who were NEET for six months or more) varies from 10% for those with Level 4 and over qualifications, up to 35% for those with no qualifications. Figure 7 shows this.
+
+Figure 7 shows that those with Level 2 or above qualifications have a markedly lower chance of being NEET for six months or more than those with qualifications above this level. The smaller number of people with other qualifications (frequently overseas qualifications) look to have a high risk of NEET.
+
+However, because the proportions of young people getting good qualifications has increased, the picture when you look at the balance of young people who are NEET six months by qualification looks very different.
+
+Figure 8 shows that there are more young people NEET for six months or more with Level 2 qualifications than those with no qualifications, and also more young people with Level 3 qualifications who are NEET six months than those with no qualifications.
+
+##NEET TWELVE MONTHS OR MORE
+
+We have defined as NEET for twelve months or more those who are classed as NEET in four out of five quarters, consecutively, observed in the 5-quarter LFS.
+
+We estimate that, in the 8 consistent datasets used (finishing in the 4th quarter of 2015), there were 906 thousand young people NEET fifteen months or more. The confidence interval is between 802 thousand and 1.1 million.
+
+The risk of being NEET for fifteen months or more varies strongly with qualification. The risk varies from 7% for those with Level 4 and over qualifications, up to 24% for those with qualifications below Level 2. Figure 9 shows this.
+
+Figure 9 shows that those with Level 2 or above qualifications have a markedly lower chance of being NEET for fifteen months or more than those with qualifications above this level. 
+
+However, because the proportions of young people getting good qualifications has increased, the picture when you look at the balance of young people who are NEET nine months by qualification looks very different.
+
+Figure 10 shows that there are many more young people NEET for fifteen months or more with Level 2 qualifications than those with no qualifications, and also more young people with Level 3 qualifications who are NEET fifteen months than those with no qualifications.
+
+#INDICATOR 8: SUSTAINMENT OF EXITS FROM BEING NEET 
+
+Figure 13 shows the extent to which young people who were NEET, and stop being NEET, remain in either education or employment.   This matters because it indicates the extent to which young people who enter employment or learning are able to stay there.  There is evidence that some young people can ‘cycle’ between being in and out of NEET, which again can have longer-term consequences for their earnings, employment, health and wellbeing.
+
+We use the Labour Force Survey to measure NEET sustainment.  To do so, we identify those who were NEET at the first out of 5 quarterly interviews, and follow them through the remaining 4 interviews. Those who sustained one year or more were not NEET in any further interview. Those who sustained six months or more were NEET in the first interview and not NEET in either of the two next interviews.
+
+The first bar below shows the proportion of young people who were NEET in the first quarter of measurement but who were no longer NEET in the second quarter (i.e. not NEET after three months).  The second bar then shows the proportion who were still not NEET in the third quarter (i.e. had sustained their exit from NEET for six months).  Subsequent bars then show the proportion still not NEET after nine and twelve months.
+
+The error bars show the confidence interval around the estimates shown. 
+Overall, 70% of the young people who sustained one year or more having left NEET moved to employment. By deduction, the remaining 30% moved to education only. This does not preclude those who left to employment being in education as well. In particular, apprenticeships include both employment (usually full-time) and education (usually part-time). The contrary pattern of full-time education combined with part-time employment in shops, bars, etc. is also common among young people.
+
+Most of those who left NEET to other destinations than employment and remained not NEET for a year were classed as economically inactive – but 7% of them were seeking work. Seeking work can be, and frequently is, combined with education, so these were likely to be in education and either seeking a job when they finished their course or a part-time job to help finances while they were studying.
+
+Figure 13: Exits from NEET and sustainment
+ 
+The error bars show the confidence we have in the estimates. 
+
+Figure 14 breaks down by qualification the patterns of one-year sustainment for the group who were NEET.
+
+Figure 14: Proportion of NEETS who leave NEET in three months and those who sustain not NEET for a year
+ 
+
+Both the exit rate from NEET and sustainment in EET for a year or more decline with lower levels of qualification. Importantly, the error bars showing the confidence intervals also widen out as we go down the qualification scale. 
+
+The drop in sustainment to one year is particularly large for those with both Level 3 and No Qualifications. We have excluded from the chart those qualifications with so few young people at either interview point that we could not estimate the percentages.
+
+These figures are based on the Labour Force Survey 5-quarter longitudinal databases, and we have pooled eight of these to provide enough respondents to make these estimates. Therefore, these figures relate to families or individuals first interviewed from July to September 2012 to July to September 2014, and the subsequent five interviews, with the last interviews taking place in October to December 2015.
+
+

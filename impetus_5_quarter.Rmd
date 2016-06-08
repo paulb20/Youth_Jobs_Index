@@ -1,0 +1,65 @@
+---
+title: "impetus 5 quarter"
+author: "Paul Bivand"
+date: "2 February 2016"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r load_lfs, echo=FALSE}
+#This is actually a 2-quarter analysis
+library(memisc)
+library(survey)
+setwd("K:/data/LFS/2-quarter")
+fiveqfiles <- list.files(pattern=glob2rx("*.sav"))
+fiveq.spss.system.files <- lapply(tail(fiveqfiles,8), FUN=spss.system.file)
+pwts <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^lgwt",names(fiveq.spss.system.files[[x]]), value=TRUE))
+ilodefr <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^ilodefr",names(fiveq.spss.system.files[[x]]), value=TRUE))
+ages <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^age",names(fiveq.spss.system.files[[x]]), value=TRUE))
+levquals <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^lequ",names(fiveq.spss.system.files[[x]]), value=TRUE))
+levqual2 <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^levqu",names(fiveq.spss.system.files[[x]]), value=TRUE))
+durun <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^durun",names(fiveq.spss.system.files[[x]]), value=TRUE))
+flow <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^flow",names(fiveq.spss.system.files[[x]]), value=TRUE))
+curedn <- lapply(seq_along(fiveq.spss.system.files), FUN=function(x) grep("^cure",names(fiveq.spss.system.files[[x]]), value=TRUE))
+subsetlgwt <- function(x) {test<- subset(fiveq.spss.system.files[[x]], 
+                                          select=c(lgwt, 
+                                                   ages1, 
+                                                   ilodefr1,
+                                                   cured81, 
+                                                   durun1,
+                                                   flow, 
+                                                   inds07m2,
+                                                   sc10mmj2))
+measurement(test$lgwt) <-"interval" 
+test <- subset(test, ages1 %in% c(4:5))
+test$yp <- recode(test$ages1, "Yes" <- c(4:5),
+                  otherwise="No")
+test$learning <- recode(test$cured81, "In learning" <- c(1:6),
+                        "Not in classroom learning" <- c(7:13))
+test$workless <- recode(test$ilodefr, "Workless" <- c("ILO unemployed", "Inactive"), 
+                        "In employment" <- "In employment")
+test$ypneet <- cases("NEET" = test$yp == "Yes" & (test$learning == "Not in classroom learning" & test$workless =="Workless"),
+                     "Not NEET" = test$yp == "Yes" & (test$learning != "Not in classroom learning" | test$workless !="Workless"))
+test$towork <- recode(test$flow, 1 <- c("UE", "NE"), otherwise=0)
+test <- subset(test, ypneet == "NEET")
+
+test <- as.data.frame(test[,c("flow", 
+                              "lgwt", 
+                              "workless",
+                              "durun1",
+                              "ages1",
+                              "inds07m2",
+                              "sc10mmj2")])                     
+return(test)}
+t9 <- subsetlgwt(9)
+### repeat for t10 through to t16
+
+testall2q <- rbind.data.frame(t9, t10, t11, t12, t13, t14, t15, t16)
+```
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
